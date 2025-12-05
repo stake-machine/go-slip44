@@ -3,10 +3,8 @@
 OUTPUT=cointypes.go
 
 # Track seen constant names to ensure uniqueness
-# Uses a temp file instead of associative array for POSIX compatibility
-SEEN_FILE=$(mktemp)
-chmod 600 "$SEEN_FILE"
-trap 'rm -f "$SEEN_FILE"' EXIT INT TERM
+# SEEN_CONST: stores constant names that have been used
+declare -A SEEN_CONST
 
 cat >${OUTPUT} <<EOSTART
 // Copyright © 2019 Weald Technology Trading
@@ -59,19 +57,19 @@ do
     CONST_NAME="${COIN}"
     
     # If this constant name is already used, try adding the symbol
-    if grep -Fqx "${CONST_NAME}" "$SEEN_FILE"; then
+    if [[ -n "${SEEN_CONST[$CONST_NAME]}" ]]; then
       if [[ -n "$SYMBOL" ]]; then
         CONST_NAME="${COIN}_${SYMBOL}"
       fi
     fi
     
     # If still duplicate, add the ID to make it unique
-    if grep -Fqx "${CONST_NAME}" "$SEEN_FILE"; then
+    if [[ -n "${SEEN_CONST[$CONST_NAME]}" ]]; then
       CONST_NAME="${COIN}_${ID}"
     fi
     
     # Mark this constant name as used
-    echo "${CONST_NAME}" >> "$SEEN_FILE"
+    SEEN_CONST[$CONST_NAME]=1
     
     echo "${CONST_NAME} = uint32(${ID})" >>${OUTPUT}
   fi
