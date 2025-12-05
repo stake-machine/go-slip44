@@ -2,11 +2,9 @@
 
 OUTPUT=cointypes.go
 
-# Track seen entries to handle duplicates properly
-# SEEN_KEY: stores "COIN:SYMBOL" combinations to detect exact duplicates
-# SEEN_NAME: stores coin names to detect when we need symbol suffix
-declare -A SEEN_KEY
-declare -A SEEN_NAME
+# Track seen constant names to ensure uniqueness
+# SEEN_CONST: stores constant names that have been used
+declare -A SEEN_CONST
 
 cat >${OUTPUT} <<EOSTART
 // Copyright © 2019 Weald Technology Trading
@@ -55,29 +53,23 @@ do
 
   # Valid variables must start with A-Z...
   if [[ "${COIN}" =~ ^[A-Z] ]]; then
-    # Create a unique key combining coin name and symbol
-    KEY="${COIN}__${SYMBOL}"
+    # Start with the coin name as the constant name
+    CONST_NAME="${COIN}"
     
-    # Skip if we've already seen this exact coin name + symbol combination
-    if [[ -n "${SEEN_KEY[$KEY]}" ]]; then
-      continue
-    fi
-    SEEN_KEY[$KEY]=1
-    
-    # Check if we've already used this coin name (with a different symbol)
-    # If so, append the symbol to make the constant name unique
-    if [[ -n "${SEEN_NAME[$COIN]}" ]]; then
-      # Use coin name with symbol suffix to differentiate
+    # If this constant name is already used, try adding the symbol
+    if [[ -n "${SEEN_CONST[$CONST_NAME]}" ]]; then
       if [[ -n "$SYMBOL" ]]; then
         CONST_NAME="${COIN}_${SYMBOL}"
-      else
-        # No symbol, use ID as suffix
-        CONST_NAME="${COIN}_${ID}"
       fi
-    else
-      CONST_NAME="${COIN}"
-      SEEN_NAME[$COIN]=1
     fi
+    
+    # If still duplicate, add the ID to make it unique
+    if [[ -n "${SEEN_CONST[$CONST_NAME]}" ]]; then
+      CONST_NAME="${COIN}_${ID}"
+    fi
+    
+    # Mark this constant name as used
+    SEEN_CONST[$CONST_NAME]=1
     
     echo "${CONST_NAME} = uint32(${ID})" >>${OUTPUT}
   fi
